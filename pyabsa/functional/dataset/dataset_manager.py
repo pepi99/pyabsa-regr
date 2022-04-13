@@ -53,6 +53,8 @@ class ABSADatasetList(list):
     Restaurant15 = DatasetItem('Restaurant15', 'Restaurant15')
     Restaurant16 = DatasetItem('Restaurant16', 'Restaurant16')
 
+    # Crypto
+    CryptoDataset = DatasetItem('Crypto', 'Crypto')
     # Twitter
     ACL_Twitter = DatasetItem('Twitter', 'Twitter')
 

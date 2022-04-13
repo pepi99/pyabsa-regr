@@ -155,3 +155,8 @@ dmypy.json
 .pyre/
 .DS_Store
 examples/.DS_Store
+
+
+# Other
+checkpoints
+

@@ -29,6 +29,7 @@ class ABSADataset(Dataset):
         all_data = []
         # record polarities type to update polarities_dim
         label_set = set()
+        polarity_list = []
 
         ex_id = 0
 
@@ -103,6 +104,7 @@ class ABSADataset(Dataset):
             ex_id += 1
 
             label_set.add(polarity)
+            polarity_list.append(polarity)
             all_data.append(data)
 
         check_and_fix_labels(label_set, 'polarity', all_data, opt)
@@ -119,9 +121,10 @@ class ABSADataset(Dataset):
                     cluster_ids.append(-100)
                     # cluster_ids.append(3)
 
-            data['cluster_ids'] = np.asarray(cluster_ids, dtype=np.int64)
+            data['cluster_ids'] = np.asarray(cluster_ids, dtype=np.float32)
             data['side_ex_ids'] = np.array(0)
             data['aspect_position'] = np.array(0)
+            data['_polarities'] = np.asarray(polarity_list, dtype=np.float32)
         self.data = all_data
 
     def __getitem__(self, index):

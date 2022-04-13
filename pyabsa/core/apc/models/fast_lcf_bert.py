@@ -25,7 +25,8 @@ class FAST_LCF_BERT(nn.Module):
         self.linear2 = nn.Linear(opt.embed_dim * 2, opt.embed_dim)
         self.bert_SA_ = Encoder(bert.config, opt)
         self.bert_pooler = BertPooler(bert.config)
-        self.dense = nn.Linear(opt.embed_dim, opt.polarities_dim)
+        print('Loading model!')
+        self.dense = nn.Linear(opt.embed_dim, 1)
 
     def forward(self, inputs):
         if self.opt.use_bert_spc:

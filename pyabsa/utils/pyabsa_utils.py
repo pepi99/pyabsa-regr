@@ -98,11 +98,11 @@ def check_and_fix_labels(label_set, label_name, all_data, opt):
     for item in all_data:
         try:
             num_label[item[label_name]] += 1
-            item[label_name] = label_to_index[item[label_name]]
+            item[label_name] = float(item[label_name])
         except Exception as e:
             # print(e)
             num_label[item.polarity] += 1
-            item.polarity = label_to_index[item.polarity]
+            item.polarity = float(item.polarity)
     print('Dataset Label Details: {}'.format(num_label))
 
 

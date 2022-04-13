@@ -36,6 +36,9 @@ except Exception:
     amp = None
 
 
+def RMSELoss(yhat, y):
+    return torch.sqrt(torch.mean((yhat - y) ** 2))
+
 class Instructor:
     def __init__(self, opt, logger):
         self.logger = logger
@@ -51,6 +54,7 @@ class Instructor:
         self.val_dataloader = self.model.val_dataloader
         self.train_dataloader = self.model.train_dataloader
         self.tokenizer = self.model.tokenizer
+        self.mse = nn.MSELoss()
 
         if 'patience' in self.opt.args and self.opt.patience:
             self.opt.patience = self.opt.patience
@@ -196,9 +200,11 @@ class Instructor:
                 self.optimizer.zero_grad()
                 inputs = {col: sample_batched[col].to(self.opt.device) for col in self.opt.inputs_cols}
                 outputs = self.model(inputs)
-                targets = sample_batched['polarity'].to(self.opt.device)
+                targets = sample_batched['polarity'].to(self.opt.device).float()
+                # targets = sample_batched['_polarities'].to(self.opt.device)
+                print('')
 
-                sen_logits = outputs['logits']
+                sen_logits = outputs['logits'].float()
                 loss = criterion(sen_logits, targets)
                 if isinstance(outputs, dict) and 'loss' in outputs:
                     loss += torch.sum(outputs['loss'])
@@ -223,24 +229,24 @@ class Instructor:
                 if self.opt.dataset_file['test'] and global_step % self.opt.log_step == 0:
                     if epoch >= self.opt.evaluate_begin:
                         if self.val_dataloaders:
-                            test_acc, f1 = self._evaluate_acc_f1(self.val_dataloaders[0])
+                            rmse = self._evaluate_acc_f1(self.val_dataloaders[0])
                         else:
-                            test_acc, f1 = self._evaluate_acc_f1(self.test_dataloader)
-                        self.opt.metrics_of_this_checkpoint['acc'] = test_acc
-                        self.opt.metrics_of_this_checkpoint['f1'] = f1
+                            rmse = self._evaluate_acc_f1(self.test_dataloader)
+                        self.opt.metrics_of_this_checkpoint['acc'] = rmse
+                        # self.opt.metrics_of_this_checkpoint['f1'] = f1
 
-                        sum_acc += test_acc
-                        sum_f1 += f1
+                        sum_acc += rmse
+                        # sum_f1 += f1
 
-                        if test_acc > max_fold_acc or f1 > max_fold_f1:
+                        if rmse > max_fold_acc:
 
-                            if test_acc > max_fold_acc:
-                                patience = self.opt.patience
-                                max_fold_acc = test_acc
+                            # if rmse > max_fold_acc:
+                            patience = self.opt.patience
+                            max_fold_acc = rmse
 
-                            if f1 > max_fold_f1:
-                                max_fold_f1 = f1
-                                patience = self.opt.patience
+                            # if f1 > max_fold_f1:
+                            #     max_fold_f1 = f1
+                            #     patience = self.opt.patience
 
                             if self.opt.model_path_to_save:
                                 if not os.path.exists(self.opt.model_path_to_save):
@@ -252,29 +258,32 @@ class Instructor:
                                     except:
                                         # logger.info('Can not remove sub-optimal trained model:', save_path)
                                         pass
-                                save_path = '{0}/{1}_{2}_acc_{3}_f1_{4}/'.format(self.opt.model_path_to_save,
-                                                                                 self.opt.model_name,
-                                                                                 self.opt.dataset_name,
-                                                                                 round(test_acc * 100, 2),
-                                                                                 round(f1 * 100, 2)
-                                                                                 )
+                                # save_path = f'rmse_{rmse}'
+                                save_path = f'{self.opt.model_path_to_save}/{self.opt.model_name}_{self.opt.dataset_name}_rmse_{rmse}'
+                                # save_path = '{0}/{1}_{2}_acc_{3}_f1_{4}/'.format(self.opt.model_path_to_save,
+                                #                                                  self.opt.model_name,
+                                #                                                  self.opt.dataset_name,
+                                #                                                  round(test_acc * 100, 2),
+                                #                                                  round(f1 * 100, 2)
+                                #                                                  )
 
-                                if test_acc > self.opt.max_test_metrics['max_apc_test_acc']:
-                                    self.opt.max_test_metrics['max_apc_test_acc'] = test_acc
-                                if f1 > self.opt.max_test_metrics['max_apc_test_f1']:
-                                    self.opt.max_test_metrics['max_apc_test_f1'] = f1
+                                if rmse > self.opt.max_test_metrics['max_apc_test_acc']:
+                                    self.opt.max_test_metrics['max_apc_test_acc'] = rmse
 
                                 save_model(self.opt, self.model, self.tokenizer, save_path)
 
-                        postfix = ('Epoch:{} | Loss:{:.4f} | Test Acc:{:.2f}(max:{:.2f}) |'
-                                   ' Test F1:{:.2f}(max:{:.2f})'.format(epoch,
-                                                                        loss.item(),
-                                                                        test_acc * 100,
-                                                                        max_fold_acc * 100,
-                                                                        f1 * 100,
-                                                                        max_fold_f1 * 100))
+                        # postfix = ('Epoch:{} | Loss:{:.4f} | Test Acc:{:.2f}(max:{:.2f}) |'
+                        #            ' Test F1:{:.2f}(max:{:.2f})'.format(epoch,
+                        #                                                 loss.item(),
+                        #                                                 test_acc * 100,
+                        #                                                 max_fold_acc * 100,
+                        #                                                 f1 * 100,
+                        #                                                 max_fold_f1 * 100))
+                        postfix = f'Epoch: {epoch} | Loss: {loss.item()} | Test Acc: {rmse}'
                     else:
-                        postfix = 'Epoch:{} | Loss: {} | No evaluation until epoch:{}'.format(epoch, round(loss.item(), 8), self.opt.evaluate_begin)
+                        # postfix = 'Epoch:{} | Loss: {} | No evaluation until epoch:{}'.format(epoch, round(loss.item(), 8), self.opt.evaluate_begin)
+                        postfix = f'Epoch: {epoch} | Loss: {loss.item()} | No evaluation until epoch: {self.opt.evaluate_begin}'
+
 
                 iterator.postfix = postfix
                 iterator.refresh()
@@ -363,7 +372,7 @@ class Instructor:
                     self.optimizer.zero_grad()
                     inputs = {col: sample_batched[col].to(self.opt.device) for col in self.opt.inputs_cols}
                     outputs = self.model(inputs)
-                    targets = sample_batched['polarity'].to(self.opt.device)
+                    targets = sample_batched['_polarity'].to(self.opt.device)
 
                     sen_logits = outputs['logits']
                     loss = criterion(sen_logits, targets)
@@ -500,6 +509,7 @@ class Instructor:
         # switch model to evaluation mode
         self.model.eval()
         n_test_correct, n_test_total = 0, 0
+        rmse = 0
         t_targets_all, t_outputs_all = None, None
         with torch.no_grad():
             for t_batch, t_sample_batched in enumerate(test_dataloader):
@@ -516,23 +526,25 @@ class Instructor:
                     sen_outputs = t_outputs
 
                 n_test_correct += (torch.argmax(sen_outputs, -1) == t_targets).sum().item()
+                rmse += RMSELoss(sen_outputs, t_targets)
                 n_test_total += len(sen_outputs)
-
-                if t_targets_all is None:
-                    t_targets_all = t_targets
-                    t_outputs_all = sen_outputs
-                else:
-                    t_targets_all = torch.cat((t_targets_all, t_targets), dim=0)
-                    t_outputs_all = torch.cat((t_outputs_all, sen_outputs), dim=0)
-
-        test_acc = n_test_correct / n_test_total
-        f1 = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(),
-                              labels=list(range(self.opt.polarities_dim)), average='macro')
-        return test_acc, f1
+        #
+        #         if t_targets_all is None:
+        #             t_targets_all = t_targets
+        #             t_outputs_all = sen_outputs
+        #         else:
+        #             t_targets_all = torch.cat((t_targets_all, t_targets), dim=0)
+        #             t_outputs_all = torch.cat((t_outputs_all, sen_outputs), dim=0)
+        #
+        # test_acc = n_test_correct / n_test_total
+        rmse_final = rmse/n_test_total
+        # f1 = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(),
+        #                       labels=list(range(self.opt.polarities_dim)), average='macro')
+        return rmse_final
 
     def run(self):
         # Loss and Optimizer
-        criterion = nn.CrossEntropyLoss()
+        criterion = nn.MSELoss()
         return self._train(criterion)
 
 
