@@ -30,7 +30,7 @@ class FAST_LSA_T(nn.Module):
         self.post_encoder = Encoder(bert.config, opt)
         self.post_encoder_ = Encoder(bert.config, opt)
         self.bert_pooler = BertPooler(bert.config)
-        self.dense = nn.Linear(opt.embed_dim, opt.polarities_dim)
+        self.dense = nn.Linear(opt.embed_dim, 1)
 
     def forward(self, inputs):
         text_bert_indices = inputs['text_bert_indices']

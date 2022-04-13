@@ -39,6 +39,7 @@ except Exception:
 def RMSELoss(yhat, y):
     return torch.sqrt(torch.mean((yhat - y) ** 2))
 
+mseloss = nn.MSELoss()
 class Instructor:
     def __init__(self, opt, logger):
         self.logger = logger
@@ -526,7 +527,7 @@ class Instructor:
                     sen_outputs = t_outputs
 
                 n_test_correct += (torch.argmax(sen_outputs, -1) == t_targets).sum().item()
-                rmse += RMSELoss(sen_outputs, t_targets)
+                rmse += mseloss(sen_outputs, t_targets)
                 n_test_total += len(sen_outputs)
         #
         #         if t_targets_all is None:
